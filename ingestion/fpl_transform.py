@@ -1,14 +1,13 @@
+import os
+import json
 import pandas as pd
 import psycopg2
 import boto3
-import json
-from fpl_fetch import fetch_bootstrap
+from fpl_fetch import fetch_bootstrap  # your FPL API fetch function
 
 # --------------------------
 # Runtime-safe credential functions
 # --------------------------
-import os
-
 def get_db_config():
     return {
         'host': os.environ.get('DB_HOST', 'postgres'),
@@ -26,6 +25,7 @@ def get_s3_client():
         raise ValueError("MinIO credentials not found in environment variables!")
 
     s3 = boto3.client(
+        service_name='s3',  # required
         endpoint_url=endpoint,
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key
@@ -37,17 +37,26 @@ def get_s3_buckets():
     processed_bucket = os.environ.get('S3_BUCKET_PROCESSED', 'fpl_processed')
     return raw_bucket, processed_bucket
 
+def ensure_bucket_exists(s3_client, bucket_name):
+    """Create the bucket if it does not exist."""
+    existing_buckets = [b['Name'] for b in s3_client.list_buckets().get('Buckets', [])]
+    if bucket_name not in existing_buckets:
+        s3_client.create_bucket(Bucket=bucket_name)
+        print(f"Created bucket: {bucket_name}")
+
 # --------------------------
 # Pipeline helpers
 # --------------------------
 def upload_raw_to_s3(file_name: str, data: dict, s3_client):
     raw_bucket, _ = get_s3_buckets()
+    ensure_bucket_exists(s3_client, raw_bucket)
     s3_client.put_object(
         Bucket=raw_bucket,
         Key=file_name,
         Body=json.dumps(data),
         ContentType='application/json'
     )
+    print(f"Uploaded raw data to bucket: {raw_bucket}, file: {file_name}")
 
 def load_df_to_postgres(df, table_name: str):
     db_config = get_db_config()
@@ -93,6 +102,7 @@ def load_df_to_postgres(df, table_name: str):
     conn.commit()
     cur.close()
     conn.close()
+    print(f"Loaded {len(df)} rows into Postgres table: {table_name}")
 
 # --------------------------
 # Main pipeline function
