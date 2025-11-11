@@ -86,4 +86,31 @@ def load_df_to_postgres(df, table_name: str):
                   team = EXCLUDED.team,
                   element_type = EXCLUDED.element_type,
                   now_cost = EXCLUDED.now_cost,
-                  t
+                  total_points = EXCLUDED.total_points,
+                  points_per_game = EXCLUDED.points_per_game;
+        """,
+        (row.id, row.first_name, row.second_name, row.team, row.element_type, row.now_cost, row.total_points, row.points_per_game))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# --------------------------
+# Main pipeline function
+# --------------------------
+def run_pipeline():
+    print("Fetching raw FPL data...")
+    raw_data = fetch_bootstrap()
+
+    print("Uploading raw data to S3...")
+    s3_client = get_s3_client()
+    upload_raw_to_s3('bootstrap_static.json', raw_data, s3_client)
+
+    print("Transforming players data...")
+    players = raw_data['elements']
+    df_players = pd.json_normalize(players)
+    df_players = df_players[['id','first_name','second_name','team','element_type','now_cost','total_points','points_per_game']]
+
+    print("Loading players data into Postgres...")
+    load_df_to_postgres(df_players, 'players')
+
+    print("Pipeline completed successfully.")
