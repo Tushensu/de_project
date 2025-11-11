@@ -2,7 +2,8 @@ import pandas as pd
 import psycopg2
 import boto3
 import json
-from config import DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET_RAW
+from config import DB_HOST, DB_NAME, DB_USER, DB_PASSWORD
+from config import S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET_RAW
 
 def load_df_to_postgres(df, table_name: str):
     conn = psycopg2.connect(
@@ -75,4 +76,5 @@ def run_pipeline():
 
     # load into Postgres
     load_df_to_postgres(df_players, 'players')
+
     print("Pipeline completed successfully.")
