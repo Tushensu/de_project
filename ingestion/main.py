@@ -5,10 +5,10 @@ import boto3
 def test_postgres():
     try:
         conn = psycopg2.connect(
-            host=os.environ['DB_HOST'],
-            user=os.environ['DB_USER'],
-            password=os.environ['DB_PASSWORD'],
-            dbname=os.environ['DB_NAME']
+            host=os.environ['DB_HOST'],          
+            user=os.environ['POSTGRES_USER'],         
+            password=os.environ['POSTGRES_PASSWORD'],
+            dbname=os.environ['POSTGRES_DB']          
         )
         cur = conn.cursor()
         cur.execute("SELECT version();")
