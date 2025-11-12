@@ -33,8 +33,8 @@ def get_s3_client():
     return s3
 
 def get_s3_buckets():
-    raw_bucket = os.environ.get('S3_BUCKET_RAW', 'fpl_raw')
-    processed_bucket = os.environ.get('S3_BUCKET_PROCESSED', 'fpl_processed')
+    raw_bucket = os.environ.get('S3_BUCKET_RAW', 'fpl-raw')
+    processed_bucket = os.environ.get('S3_BUCKET_PROCESSED', 'fpl-processed')
     return raw_bucket, processed_bucket
 
 def ensure_bucket_exists(s3_client, bucket_name):
