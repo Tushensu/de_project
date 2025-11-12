@@ -17,8 +17,8 @@ def get_db_config():
     }
 
 def get_s3_client():
-    access_key = os.environ.get('MINIO_ROOT_USER')
-    secret_key = os.environ.get('MINIO_ROOT_PASSWORD')
+    access_key = os.environ.get('S3_ACCESS_KEY') or os.environ.get('MINIO_ROOT_USER')
+    secret_key = os.environ.get('S3_SECRET_KEY') or os.environ.get('MINIO_ROOT_PASSWORD')
     endpoint = os.environ.get('S3_ENDPOINT', 'http://minio:9000')
 
     if not access_key or not secret_key:
