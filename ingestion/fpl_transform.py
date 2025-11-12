@@ -117,7 +117,7 @@ def run_pipeline():
 
     # Transform & load players
     print("Transforming players data...")
-    players = all_data['elements']['elements']
+    players = all_data['elements']
     df_players = pd.json_normalize(players)
     df_players = df_players[['id','first_name','second_name','team','element_type','now_cost','total_points','points_per_game']]
     print("Loading players data into Postgres...")
