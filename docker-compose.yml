@@ -23,7 +23,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
+      - ./minio_data:/data
 
   airflow:
     image: apache/airflow:2.10.2

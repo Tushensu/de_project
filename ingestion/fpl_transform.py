@@ -3,10 +3,10 @@ import json
 import pandas as pd
 import psycopg2
 import boto3
-from fpl_fetch import fetch_bootstrap  # your FPL API fetch function
+from fpl_fetch import fetch_all_endpoints, fetch_player_summaries
 
 # --------------------------
-# Runtime-safe credential functions
+# Config helpers (keep as before)
 # --------------------------
 def get_db_config():
     return {
@@ -25,7 +25,7 @@ def get_s3_client():
         raise ValueError("MinIO credentials not found in environment variables!")
 
     s3 = boto3.client(
-        service_name='s3',  # required
+        service_name='s3',
         endpoint_url=endpoint,
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key
@@ -38,7 +38,6 @@ def get_s3_buckets():
     return raw_bucket, processed_bucket
 
 def ensure_bucket_exists(s3_client, bucket_name):
-    """Create the bucket if it does not exist."""
     existing_buckets = [b['Name'] for b in s3_client.list_buckets().get('Buckets', [])]
     if bucket_name not in existing_buckets:
         s3_client.create_bucket(Bucket=bucket_name)
@@ -68,7 +67,7 @@ def load_df_to_postgres(df, table_name: str):
     )
     cur = conn.cursor()
 
-    # Create table if not exists
+    # Example table, can be generalized later
     create_sql = f"""
     CREATE TABLE IF NOT EXISTS {table_name} (
         id          INT PRIMARY KEY,
@@ -84,7 +83,6 @@ def load_df_to_postgres(df, table_name: str):
     cur.execute(create_sql)
     conn.commit()
 
-    # Insert / upsert rows
     for _, row in df.iterrows():
         cur.execute(f"""
             INSERT INTO {table_name} (id, first_name, second_name, team, element_type, now_cost, total_points, points_per_game)
@@ -108,19 +106,28 @@ def load_df_to_postgres(df, table_name: str):
 # Main pipeline function
 # --------------------------
 def run_pipeline():
-    print("Fetching raw FPL data...")
-    raw_data = fetch_bootstrap()
+    print("Fetching all FPL endpoints...")
+    all_data = fetch_all_endpoints()
 
-    print("Uploading raw data to S3...")
     s3_client = get_s3_client()
-    upload_raw_to_s3('bootstrap_static.json', raw_data, s3_client)
 
+    # Upload all raw endpoints
+    for name, data in all_data.items():
+        upload_raw_to_s3(f"{name}.json", data, s3_client)
+
+    # Transform & load players
     print("Transforming players data...")
-    players = raw_data['elements']
+    players = all_data['elements']['elements']
     df_players = pd.json_normalize(players)
     df_players = df_players[['id','first_name','second_name','team','element_type','now_cost','total_points','points_per_game']]
-
     print("Loading players data into Postgres...")
     load_df_to_postgres(df_players, 'players')
+
+    # Fetch player summaries individually
+    print("Fetching player summaries...")
+    player_ids = [p['id'] for p in players]
+    player_summaries = fetch_player_summaries(player_ids)
+    for pid, data in player_summaries.items():
+        upload_raw_to_s3(f"player_{pid}.json", data, s3_client)
 
     print("Pipeline completed successfully.")
